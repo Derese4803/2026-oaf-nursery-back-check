@@ -11,7 +11,8 @@ from database import SessionLocal
 from models import Farmer, Woreda, Kebele, create_tables
 
 # --- INITIALIZATION ---
-st.set_page_config(page_title="Amhara distributio register form 2025", layout="wide", page_icon="🌳")
+# Updated page title for 2026 Distribution
+st.set_page_config(page_title="Amhara 2026 Distribution", layout="wide", page_icon="🌳")
 create_tables()
 
 def run_migrations():
@@ -52,20 +53,24 @@ def nav(p):
 
 # --- APP PAGES ---
 def main():
-    st.sidebar.title("🚜 2025 Survey")
+    # Sidebar Branding
+    st.sidebar.title("🌳 Amhara 2026")
+    st.sidebar.caption("Distribution Register Form")
+    
     p = st.session_state["page"]
 
     if p == "Home":
-        st.title("🌾 Amhara 2025 Planting Survey")
-        st.info("Public Access Mode - No Login Required")
+        st.title("🚜 Amhara 2026 Distribution Register Form")
+        st.info("Welcome to the 2026 Planting Season distribution tool.")
+        st.markdown("---")
         c1, c2, c3 = st.columns(3)
         if c1.button("📝 NEW REGISTRATION", use_container_width=True, type="primary"): nav("Reg")
-        if c2.button("📍 LOCATIONS", use_container_width=True): nav("Loc")
-        if c3.button("📊 VIEW DATA", use_container_width=True): nav("Data")
+        if c2.button("📍 MANAGE LOCATIONS", use_container_width=True): nav("Loc")
+        if c3.button("📊 VIEW SURVEY DATA", use_container_width=True): nav("Data")
 
     elif p == "Reg":
-        if st.button("⬅️ Back"): nav("Home")
-        st.header("Farmer Registration")
+        if st.button("⬅️ Back to Home"): nav("Home")
+        st.header("📝 Farmer Distribution Entry")
         db = SessionLocal()
         woredas = db.query(Woreda).all()
         
@@ -74,7 +79,7 @@ def main():
             with col_a:
                 name = st.text_input("Farmer Full Name")
                 phone = st.text_input("Phone Number")
-                surveyor = st.text_input("Your Name (Surveyor)")
+                surveyor = st.text_input("Distribution Officer Name")
             with col_b:
                 w_list = [w.name for w in woredas] if woredas else ["Add Woredas First"]
                 sel_woreda = st.selectbox("Woreda", w_list)
@@ -86,6 +91,7 @@ def main():
 
             st.markdown("---")
             st.subheader("🌲 Seedlings Distributed")
+            # 3-Column Input Layout
             t1, t2, t3 = st.columns(3)
             with t1:
                 gesho = st.number_input("Gesho", 0)
@@ -100,9 +106,9 @@ def main():
                 moringa = st.number_input("Moringa", 0)
                 guava = st.number_input("Guava", 0)
 
-            audio = st.file_uploader("🎤 Audio Note", type=['mp3', 'wav', 'm4a'])
+            audio = st.file_uploader("🎤 Audio Note (Confirmation)", type=['mp3', 'wav', 'm4a'])
             
-            if st.form_submit_button("Save Registration"):
+            if st.form_submit_button("Submit Distribution Record"):
                 if not name or not kebeles:
                     st.error("Missing Name or Location!")
                 else:
@@ -116,15 +122,15 @@ def main():
                     )
                     db.add(new_f)
                     db.commit()
-                    st.success("✅ Saved Successfully!")
+                    st.success(f"✅ Record for {name} saved successfully!")
         db.close()
 
     elif p == "Loc":
-        if st.button("⬅️ Back"): nav("Home")
+        if st.button("⬅️ Back to Home"): nav("Home")
         db = SessionLocal()
-        st.header("📍 Location Management")
+        st.header("📍 Manage Distribution Areas")
         nw = st.text_input("New Woreda Name")
-        if st.button("Save Woreda"):
+        if st.button("Add Woreda"):
             if nw: db.add(Woreda(name=nw)); db.commit(); st.rerun()
 
         for w in db.query(Woreda).all():
@@ -136,15 +142,21 @@ def main():
         db.close()
 
     elif p == "Data":
-        if st.button("⬅️ Back"): nav("Home")
-        st.header("📊 Survey Records")
+        if st.button("⬅️ Back to Home"): nav("Home")
+        st.header("📊 2026 Distribution Data")
         db = SessionLocal()
         farmers = db.query(Farmer).all()
         if farmers:
-            df = pd.DataFrame([f.__dict__ for f in farmers]).drop('_sa_instance_state', axis=1)
-            st.download_button("📥 Download CSV", df.to_csv(index=False).encode('utf-8'), "Survey_Data.csv")
+            # Clean dataframe for export
+            data_list = []
+            for f in farmers:
+                d = f.__dict__.copy()
+                d.pop('_sa_instance_state', None)
+                data_list.append(d)
+            df = pd.DataFrame(data_list)
+            st.download_button("📥 Export 2026 Data to CSV", df.to_csv(index=False).encode('utf-8'), "Amhara_2026_Distribution.csv")
             st.dataframe(df)
-        else: st.info("No records yet.")
+        else: st.info("No records recorded for 2026 yet.")
         db.close()
 
 if __name__ == "__main__": main()
