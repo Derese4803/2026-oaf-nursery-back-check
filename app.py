@@ -7,32 +7,19 @@ from googleapiclient.http import MediaIoBaseUpload
 from sqlalchemy import text
 import os
 
-# --- 1. IMPORT LOCAL MODULES ---
-try:
-    from database import SessionLocal
-    from models import Farmer, Woreda, Kebele, create_tables
-    # Note: We don't need check_auth anymore
-except ImportError as e:
-    st.error(f"❌ Critical Error: Missing files in repository! {e}")
-    st.stop()
+from database import SessionLocal
+from models import Farmer, Woreda, Kebele, create_tables
 
-# --- 2. CONFIG & DATABASE INIT ---
+# --- INITIALIZATION ---
 st.set_page_config(page_title="Amhara Survey 2025", layout="wide", page_icon="🌳")
-
-# Create tables if they don't exist
 create_tables()
 
 def run_migrations():
-    """Ensures all columns exist in the database even if added later."""
     db = SessionLocal()
-    cols = [
-        "gesho", "giravila", "diceres", "wanza", "papaya", 
-        "moringa", "lemon", "arzelibanos", "guava", 
-        "phone", "f_type", "registered_by", "audio_url"
-    ]
+    cols = ["gesho", "giravila", "diceres", "wanza", "papaya", "moringa", "lemon", "arzelibanos", "guava", "phone", "registered_by", "audio_url"]
     for c in cols:
         try:
-            dtype = "INTEGER DEFAULT 0" if c not in ["phone", "f_type", "registered_by", "audio_url"] else "TEXT"
+            dtype = "INTEGER DEFAULT 0" if c not in ["phone", "registered_by", "audio_url"] else "TEXT"
             db.execute(text(f"ALTER TABLE farmers ADD COLUMN {c} {dtype}"))
             db.commit()
         except:
@@ -41,82 +28,63 @@ def run_migrations():
 
 run_migrations()
 
-# --- 3. GOOGLE DRIVE UPLOAD ---
+# --- GOOGLE DRIVE UPLOAD ---
 def upload_to_drive(file, farmer_name):
     try:
         creds_info = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json(creds_info, ['https://www.googleapis.com/auth/drive'])
         service = build('drive', 'v3', credentials=creds)
-        
         file_name = f"{farmer_name}_{datetime.now().strftime('%Y%m%d_%H%M')}.mp3"
         media = MediaIoBaseUpload(file, mimetype='audio/mpeg', resumable=True)
-        
-        g_file = service.files().create(
-            body={'name': file_name}, 
-            media_body=media, 
-            fields='id'
-        ).execute()
-        
+        g_file = service.files().create(body={'name': file_name}, media_body=media, fields='id').execute()
         fid = g_file.get('id')
         service.permissions().create(fileId=fid, body={'type': 'anyone', 'role': 'viewer'}).execute()
         return f"https://drive.google.com/uc?id={fid}"
     except Exception as e:
-        st.error(f"Google Drive Upload Failed: {e}")
+        st.error(f"Drive Error: {e}")
         return None
 
-# --- 4. NAVIGATION LOGIC ---
+# --- NAVIGATION ---
+if "page" not in st.session_state: st.session_state["page"] = "Home"
 def nav(p):
     st.session_state["page"] = p
     st.rerun()
 
-# --- 5. MAIN APPLICATION FLOW ---
+# --- APP PAGES ---
 def main():
-    # LOGIN REMOVED: The app starts directly here
-    if "page" not in st.session_state: 
-        st.session_state["page"] = "Home"
-    
-    # Sidebar only for navigation info now
     st.sidebar.title("🚜 2025 Survey")
-    st.sidebar.info("Public Access Mode")
+    p = st.session_state["page"]
 
-    page = st.session_state["page"]
-
-    # --- PAGE: HOME ---
-    if page == "Home":
+    if p == "Home":
         st.title("🌾 Amhara 2025 Planting Survey")
-        st.markdown("---")
+        st.info("Public Access Mode - No Login Required")
         c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("📝 NEW REGISTRATION", use_container_width=True, type="primary"): nav("Reg")
-        with c2:
-            if st.button("📍 MANAGE LOCATIONS", use_container_width=True): nav("Loc")
-        with c3:
-            if st.button("📊 VIEW DATA", use_container_width=True): nav("Data")
+        if c1.button("📝 NEW REGISTRATION", use_container_width=True, type="primary"): nav("Reg")
+        if c2.button("📍 LOCATIONS", use_container_width=True): nav("Loc")
+        if c3.button("📊 VIEW DATA", use_container_width=True): nav("Data")
 
-    # --- PAGE: REGISTRATION ---
-    elif page == "Reg":
+    elif p == "Reg":
         if st.button("⬅️ Back"): nav("Home")
-        st.header("Farmer Registration Form")
+        st.header("Farmer Registration")
         db = SessionLocal()
         woredas = db.query(Woreda).all()
         
         with st.form("reg_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            with col1:
+            col_a, col_b = st.columns(2)
+            with col_a:
                 name = st.text_input("Farmer Full Name")
                 phone = st.text_input("Phone Number")
-                # Add a manual name for the surveyor since login is gone
-                surveyor_name = st.text_input("Surveyor Name (Your Name)")
-            with col2:
-                w_list = [w.name for w in woredas] if woredas else ["No Woredas Found"]
+                surveyor = st.text_input("Your Name (Surveyor)")
+            with col_b:
+                w_list = [w.name for w in woredas] if woredas else ["Add Woredas First"]
                 sel_woreda = st.selectbox("Woreda", w_list)
-                
                 kebeles = []
-                if woredas and sel_woreda != "No Woredas Found":
+                if woredas and sel_woreda != "Add Woredas First":
                     w_obj = db.query(Woreda).filter(Woreda.name == sel_woreda).first()
                     kebeles = [k.name for k in w_obj.kebeles]
                 sel_kebele = st.selectbox("Kebele", kebeles if kebeles else ["No Kebeles Found"])
-            
+
+            st.markdown("---")
             st.subheader("🌲 Seedlings Distributed")
             t1, t2, t3 = st.columns(3)
             with t1:
@@ -132,29 +100,26 @@ def main():
                 moringa = st.number_input("Moringa", 0)
                 guava = st.number_input("Guava", 0)
 
-            audio = st.file_uploader("🎤 Record Audio Note", type=['mp3', 'wav', 'm4a'])
+            audio = st.file_uploader("🎤 Audio Note", type=['mp3', 'wav', 'm4a'])
             
             if st.form_submit_button("Save Registration"):
                 if not name or not kebeles:
                     st.error("Missing Name or Location!")
                 else:
-                    with st.spinner("Saving..."):
-                        url = upload_to_drive(audio, name) if audio else None
-                        new_f = Farmer(
-                            name=name, phone=phone, woreda=sel_woreda, 
-                            kebele=sel_kebele, audio_url=url, 
-                            registered_by=surveyor_name, # Saved from the text input
-                            gesho=gesho, giravila=giravila, diceres=diceres, wanza=wanza,
-                            papaya=papaya, moringa=moringa, lemon=lemon, 
-                            arzelibanos=arzelibanos, guava=guava
-                        )
-                        db.add(new_f)
-                        db.commit()
-                        st.success(f"✅ Record for {name} saved!")
+                    url = upload_to_drive(audio, name) if audio else None
+                    new_f = Farmer(
+                        name=name, phone=phone, woreda=sel_woreda, kebele=sel_kebele,
+                        registered_by=surveyor, audio_url=url,
+                        gesho=gesho, giravila=giravila, diceres=diceres, wanza=wanza,
+                        papaya=papaya, moringa=moringa, lemon=lemon, 
+                        arzelibanos=arzelibanos, guava=guava
+                    )
+                    db.add(new_f)
+                    db.commit()
+                    st.success("✅ Saved Successfully!")
         db.close()
 
-    # --- PAGE: LOCATIONS ---
-    elif page == "Loc":
+    elif p == "Loc":
         if st.button("⬅️ Back"): nav("Home")
         db = SessionLocal()
         st.header("📍 Location Management")
@@ -167,24 +132,19 @@ def main():
                 nk = st.text_input(f"New Kebele for {w.name}", key=f"k_{w.id}")
                 if st.button("Add Kebele", key=f"b_{w.id}"):
                     if nk: db.add(Kebele(name=nk, woreda_id=w.id)); db.commit(); st.rerun()
-                for k in w.kebeles:
-                    st.write(f"- {k.name}")
+                for k in w.kebeles: st.write(f"- {k.name}")
         db.close()
 
-    # --- PAGE: DATA VIEW ---
-    elif page == "Data":
+    elif p == "Data":
         if st.button("⬅️ Back"): nav("Home")
         st.header("📊 Survey Records")
         db = SessionLocal()
         farmers = db.query(Farmer).all()
         if farmers:
-            # Drop unnecessary internal column for display
             df = pd.DataFrame([f.__dict__ for f in farmers]).drop('_sa_instance_state', axis=1)
             st.download_button("📥 Download CSV", df.to_csv(index=False).encode('utf-8'), "Survey_Data.csv")
             st.dataframe(df)
-        else:
-            st.info("No records yet.")
+        else: st.info("No records yet.")
         db.close()
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
