@@ -3,7 +3,7 @@ import pandas as pd
 from database import SessionLocal, engine
 from models import BackCheck, Base
 
-# --- INITIALIZATION ---
+# --- CONFIGURATION ---
 st.set_page_config(page_title="OAF Nursery Back Check", layout="wide", page_icon="🌳")
 
 def init_db():
@@ -21,9 +21,8 @@ def nav(p):
 def main():
     page = st.session_state["page"]
     
-    # --- SIDEBAR NAVIGATION ---
+    # --- SIDEBAR ---
     st.sidebar.title("OAF Nursery 🌳")
-    st.sidebar.markdown("---")
     if st.sidebar.button("📝 Registration Form / መመዝገቢያ ፎርም", use_container_width=True): nav("Form")
     if st.sidebar.button("📊 View Records / መረጃዎችን ይመልከቱ", use_container_width=True): nav("Data")
 
@@ -41,21 +40,21 @@ def main():
             k_val = c3.text_input("Kebele (ቀበሌ)")
             t_val = c4.text_input("TNO Name (የTNO ስም)")
 
-            p1, p2, p3, p4 = st.columns(4)
+            p1, p2, p3, p4, p5 = st.columns(5)
             f_val = p1.text_input("FA Name (የFA ስም)")
             cb_val = p2.text_input("CBE Name (የCBE ስም)")
-            ph_val = p3.text_input("Phone (ስልክ)")
-            fn_val = p4.radio("Fenced? (አጥር አለው?)", ["Yes (አዎ)", "No (የለም)"], horizontal=True)
+            acc_val = p3.text_input("CBE ACC (የCBE ሂሳብ ቁጥር)") # Added Field
+            ph_val = p4.text_input("Phone (ስልክ)")
+            fn_val = p5.radio("Fenced? (አጥር?)", ["Yes", "No"], horizontal=True)
 
             st.markdown("---")
 
-            # Helper function to create sections
             def bed_section(species, amharic):
                 st.markdown(f"### 🌿 {species} ({amharic})")
                 bc1, bc2, bc3 = st.columns(3)
-                n = bc1.number_input(f"{amharic} beds # (የአልጋ ብዛት)", min_value=0, step=1, key=f"n_{species}")
-                l = bc2.number_input(f"{amharic} length (m) (ርዝመት)", min_value=0.0, step=0.1, key=f"l_{species}")
-                s = bc3.number_input(f"{amharic} sockets width (የጎን ሶኬት)", min_value=0, step=1, key=f"s_{species}")
+                n = bc1.number_input(f"{amharic} አልጋ #", min_value=0, step=1, key=f"n_{species}")
+                l = bc2.number_input(f"{amharic} ርዝመት (m)", min_value=0.0, step=0.1, key=f"l_{species}")
+                s = bc3.number_input(f"{amharic} ሶኬት ብዛት", min_value=0, step=1, key=f"s_{species}")
                 return n, l, s
 
             g_n, g_l, g_s = bed_section("Guava", "ዘይቶን")
@@ -63,30 +62,18 @@ def main():
             l_n, l_l, l_s = bed_section("Lemon", "ሎሚ")
             gr_n, gr_l, gr_s = bed_section("Grevillea", "ግራቪሊያ")
 
-            # Calculations
-            t_guava, t_gesho = g_n * g_s, ge_n * ge_s
-            t_lemon, t_grevillea = l_n * l_s, gr_n * gr_s
-
             if st.form_submit_button("Submit Data / መረጃውን መዝግብ"):
-                if not w_val or not k_val:
-                    st.error("Please fill Woreda and Kebele! / እባክዎ ወረዳ እና ቀበሌ ይሙሉ!")
-                else:
-                    try:
-                        new_record = BackCheck(
-                            woreda=w_val, cluster=cl_val, kebele=k_val, tno_name=t_val,
-                            checker_fa_name=f_val, checker_cbe_name=cb_val,
-                            checker_phone=ph_val, fenced=fn_val,
-                            guava_beds=g_n, guava_length=g_l, guava_sockets=g_s, total_guava_sockets=t_guava,
-                            gesho_beds=ge_n, gesho_length=ge_l, gesho_sockets=ge_s, total_gesho_sockets=t_gesho,
-                            lemon_beds=l_n, lemon_length=l_l, lemon_sockets=l_s, total_lemon_sockets=t_lemon,
-                            grevillea_beds=gr_n, grevillea_length=gr_l, grevillea_sockets=gr_s, total_grevillea_sockets=t_grevillea
-                        )
-                        db.add(new_record)
-                        db.commit()
-                        st.success("✅ Saved Successfully! / መረጃው ተመዝግቧል!")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Error: {e}. Please delete your .db file.")
+                new_record = BackCheck(
+                    woreda=w_val, cluster=cl_val, kebele=k_val, tno_name=t_val,
+                    checker_fa_name=f_val, checker_cbe_name=cb_val, cbe_acc=acc_val,
+                    checker_phone=ph_val, fenced=fn_val,
+                    guava_beds=g_n, guava_length=g_l, guava_sockets=g_s, total_guava_sockets=g_n*g_s,
+                    gesho_beds=ge_n, gesho_length=ge_l, gesho_sockets=ge_s, total_gesho_sockets=ge_n*ge_s,
+                    lemon_beds=l_n, lemon_length=l_l, lemon_sockets=l_s, total_lemon_sockets=l_n*l_s,
+                    grevillea_beds=gr_n, grevillea_length=gr_l, grevillea_sockets=gr_s, total_grevillea_sockets=gr_n*gr_s
+                )
+                db.add(new_record); db.commit()
+                st.success("✅ Saved! / መረጃው ተመዝግቧል!")
         db.close()
 
     # --- PAGE 2: DATA VIEW ---
@@ -94,44 +81,33 @@ def main():
         st.title("📊 Recorded Data / የተመዘገቡ መረጃዎች")
         db = SessionLocal()
         records = db.query(BackCheck).all()
-        
         if records:
             df = pd.DataFrame([r.__dict__ for r in records])
             
-            # --- SPECIFIC COLUMN ORDERING (Grouping by Species) ---
+            # Reordered Columns with Groups
             ordered_cols = [
                 'id', 'woreda', 'cluster', 'kebele', 'tno_name',
-                # Guava Group
                 'guava_beds', 'guava_length', 'guava_sockets', 'total_guava_sockets',
-                # Gesho Group
                 'gesho_beds', 'gesho_length', 'gesho_sockets', 'total_gesho_sockets',
-                # Lemon Group
                 'lemon_beds', 'lemon_length', 'lemon_sockets', 'total_lemon_sockets',
-                # Grevillea Group
                 'grevillea_beds', 'grevillea_length', 'grevillea_sockets', 'total_grevillea_sockets',
-                'checker_fa_name', 'fenced', 'timestamp'
+                'checker_fa_name', 'checker_cbe_name', 'cbe_acc', 'checker_phone', 'fenced'
             ]
             
-            # Filter to ensure we only select columns that exist
-            final_cols = [c for c in ordered_cols if c in df.columns]
-            df = df[final_cols]
+            final_df = df[[c for c in ordered_cols if c in df.columns]]
             
             # AMHARIC TABLE HEADERS
             rename_map = {
-                'id': 'ID', 'woreda': 'ወረዳ', 'cluster': 'ክላስተር', 'kebele': 'ቀበሌ', 'tno_name': 'TNO ስም',
-                'guava_beds': 'ዘይቶን አልጋ', 'guava_length': 'ዘይቶን ርዝመት', 'guava_sockets': 'ዘይቶን ሶኬት', 'total_guava_sockets': 'ድምር ዘይቶን',
-                'gesho_beds': 'ጌሾ አልጋ', 'gesho_length': 'ጌሾ ርዝመት', 'gesho_sockets': 'ጌሾ ሶኬት', 'total_gesho_sockets': 'ድምር ጌሾ',
-                'lemon_beds': 'ሎሚ አልጋ', 'lemon_length': 'ሎሚ ርዝመት', 'lemon_sockets': 'ሎሚ ሶኬት', 'total_lemon_sockets': 'ድምር ሎሚ',
-                'grevillea_beds': 'ግራቪሊያ አልጋ', 'grevillea_length': 'ግራቪሊያ ርዝመት', 'grevillea_sockets': 'ግራቪሊያ ሶኬት', 'total_grevillea_sockets': 'ድምር ግራቪሊያ',
-                'checker_fa_name': 'የFA ስም', 'fenced': 'አጥር', 'timestamp': 'ጊዜ'
+                'woreda': 'ወረዳ', 'cluster': 'ክላስተር', 'kebele': 'ቀበሌ', 'tno_name': 'TNO ስም',
+                'cbe_acc': 'CBE ACC (ሂሳብ ቁጥር)',
+                'guava_beds': 'ዘይቶን አልጋ', 'guava_length': 'ዘይቶን ርዝመት', 'guava_sockets': 'ዘይቶን ሶኬት',
+                'gesho_beds': 'ጌሾ አልጋ', 'gesho_length': 'ጌሾ ርዝመት', 'gesho_sockets': 'ጌሾ ሶኬት',
+                'lemon_beds': 'ሎሚ አልጋ', 'lemon_length': 'ሎሚ ርዝመት', 'lemon_sockets': 'ሎሚ ሶኬት',
+                'grevillea_beds': 'ግራቪሊያ አልጋ', 'grevillea_length': 'ግራቪሊያ ርዝመት', 'grevillea_sockets': 'ግራቪሊያ ሶኬት'
             }
             
-            st.dataframe(df.rename(columns=rename_map), use_container_width=True)
-            
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download CSV / መረጃውን አውርድ", data=csv, file_name="nursery_data.csv")
-        else:
-            st.info("No records found. / ምንም መረጃ አልተገኘም::")
+            st.dataframe(final_df.rename(columns=rename_map), use_container_width=True)
+            st.download_button("📥 Export CSV", data=final_df.to_csv(index=False), file_name="nursery_data.csv")
         db.close()
 
 if __name__ == "__main__":
