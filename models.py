@@ -26,7 +26,6 @@ class Farmer(Base):
     kebele = Column(String)
     officer_name = Column(String)
     audio_url = Column(String)
-    # Seedlings
     gesho = Column(Integer, default=0)
     giravila = Column(Integer, default=0)
     diceres = Column(Integer, default=0)
