@@ -14,11 +14,12 @@ class BackCheck(Base):
     kebele = Column(String)
     tno_name = Column(String)
     checker_fa_name = Column(String)
-    checker_cbe_name = Column(String) 
+    checker_cbe_name = Column(String)
+    cbe_acc = Column(String)          # New Field: CBE Account Number
     checker_phone = Column(String)    
     fenced = Column(String)           
 
-    # Groups
+    # Species Metrics
     guava_beds = Column(Integer); guava_length = Column(Float); guava_sockets = Column(Integer); total_guava_sockets = Column(Integer)
     gesho_beds = Column(Integer); gesho_length = Column(Float); gesho_sockets = Column(Integer); total_gesho_sockets = Column(Integer)
     lemon_beds = Column(Integer); lemon_length = Column(Float); lemon_sockets = Column(Integer); total_lemon_sockets = Column(Integer)
