@@ -42,8 +42,8 @@ class BackCheck(Base):
     __tablename__ = 'back_checks'
     id = Column(Integer, primary_key=True)
     checker_name = Column(String)
-    woreda = Column(String)
-    kebele = Column(String)
+    woreda = Column(String) # Typed input
+    kebele = Column(String) # Typed input
     fenced = Column(String)
     # Guava
     guava_beds = Column(Integer)
@@ -53,7 +53,7 @@ class BackCheck(Base):
     lemon_beds = Column(Integer)
     lemon_length = Column(Float)
     lemon_sockets = Column(Integer)
-    total_lemon_sockets = Column(Integer) # Automatic Calculation field
+    total_lemon_sockets = Column(Integer) # Auto-calculated
     # Gesho
     gesho_beds = Column(Integer)
     gesho_length = Column(Float)
