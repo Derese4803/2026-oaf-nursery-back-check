@@ -14,8 +14,7 @@ class BackCheck(Base):
     kebele = Column(String)
     tno_name = Column(String)
     checker_fa_name = Column(String)
-    checker_cbe_name = Column(String)
-    cbe_acc = Column(String)          # CBE Account
+    cbe_acc = Column(String)          # CBE Account Number
     checker_phone = Column(String)    
     fenced = Column(String)           
 
