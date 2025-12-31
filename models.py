@@ -14,8 +14,8 @@ class BackCheck(Base):
     cluster = Column(String)         # NEW
     tno_name = Column(String)        # NEW
     checker_fa_name = Column(String)
-    checker_cbe_name = Column(String) 
-    checker_phone = Column(String)    
+    checker_cbe = Column(Integer) 
+    checker_phone = Column(Integer)    
     fenced = Column(String)           
 
     # Guava Group
