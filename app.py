@@ -98,16 +98,12 @@ def main():
             # Create DataFrame
             df = pd.DataFrame([r.__dict__ for r in records])
             
-            # --- SPECIFIC COLUMN ORDERING AS REQUESTED ---
+            # --- STRICT COLUMN ORDERING AS REQUESTED ---
             cols = [
                 'id', 'woreda', 'kebele', 'checker_fa_name', 'checker_cbe_name', 'checker_phone',
-                # Guava Group
                 'guava_beds', 'guava_length', 'guava_sockets',
-                # Gesho Group
                 'gesho_beds', 'gesho_length', 'gesho_sockets',
-                # Lemon Group
                 'lemon_beds', 'lemon_length', 'lemon_sockets', 'total_lemon_sockets',
-                # Grevillea Group
                 'grevillea_beds', 'grevillea_length', 'grevillea_sockets',
                 'fenced', 'timestamp'
             ]
@@ -136,4 +132,16 @@ def main():
                         st.success(f"ID {id_to_del} removed.")
                         st.rerun()
                     else:
-                        st.
+                        st.error("ID not found.")
+            
+            with del_col2:
+                st.write("#### Export Options")
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button("📥 Download Excel/CSV", data=csv, file_name="OAF_Nursery_Data.csv", mime="text/csv")
+
+        else:
+            st.info("No records have been submitted yet.")
+        db.close()
+
+if __name__ == "__main__":
+    main()
