@@ -8,13 +8,13 @@ class BackCheck(Base):
     __tablename__ = 'oaf_back_checks'
     id = Column(Integer, primary_key=True)
     
-    # Location & Personnel
+    # Personnel & Location
     woreda = Column(String)
     cluster = Column(String)
     kebele = Column(String)
     tno_name = Column(String)
     checker_fa_name = Column(String)
-    cbe_acc = Column(String)          # This must match the keyword in app.py
+    cbe_acc = Column(String)          # Corrected Field
     checker_phone = Column(String)    
     fenced = Column(String)           
 
