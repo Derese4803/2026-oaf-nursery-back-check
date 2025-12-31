@@ -7,7 +7,7 @@ from models import BackCheck, Base
 st.set_page_config(page_title="OAF Nursery Back Check", layout="wide", page_icon="🌳")
 
 def init_db():
-    # This creates the table. If structure changes, delete the .db file first.
+    # If you get an error, delete your .db file and refresh the page
     Base.metadata.create_all(bind=engine)
 
 init_db()
@@ -44,9 +44,9 @@ def main():
 
             p1, p2, p3, p4 = st.columns(4)
             f_val = p1.text_input("FA Name (የFA ስም)")
-            acc_val = p2.text_input("CBE Account (የCBE ሂሳብ ቁጥር)")
+            acc_val = p2.text_input("CBE ACC (የCBE ሂሳብ ቁጥር)")
             ph_val = p3.text_input("Phone (ስልክ ቁጥር)")
-            fn_val = p4.radio("Fenced? (አጥር አለው?)", ["Yes (አዎ)", "No (የለም)"], horizontal=True)
+            fn_val = p4.radio("Fenced? (አጥር?)", ["Yes (አዎ)", "No (የለም)"], horizontal=True)
 
             st.markdown("---")
 
@@ -82,7 +82,7 @@ def main():
                         st.success("✅ Saved Successfully! / መረጃው ተመዝግቧል!")
                         st.balloons()
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"Error: {e}. Please ensure you deleted the old .db file.")
         db.close()
 
     # --- PAGE 2: DATA VIEW ---
@@ -90,38 +90,33 @@ def main():
         st.title("📊 Recorded Data / የተመዘገቡ መረጃዎች")
         db = SessionLocal()
         records = db.query(BackCheck).all()
-        
         if records:
             df = pd.DataFrame([r.__dict__ for r in records])
             
-            # --- THE EXACT ORDERED COLUMN LIST ---
-            column_order = [
+            # Reordered columns grouped by species as requested
+            ordered_cols = [
                 'id', 'woreda', 'cluster', 'kebele', 'tno_name', 'checker_fa_name', 'cbe_acc', 'checker_phone',
-                'guava_beds', 'guava_length', 'guava_sockets',   # Guava Group
-                'gesho_beds', 'gesho_length', 'gesho_sockets',   # Gesho Group
-                'lemon_beds', 'lemon_length', 'lemon_sockets',   # Lemon Group
-                'grevillea_beds', 'grevillea_length', 'grevillea_sockets', # Grevillea Group
+                'guava_beds', 'guava_length', 'guava_sockets',   # Guava
+                'gesho_beds', 'gesho_length', 'gesho_sockets',   # Gesho
+                'lemon_beds', 'lemon_length', 'lemon_sockets',   # Lemon
+                'grevillea_beds', 'grevillea_length', 'grevillea_sockets', # Grevillea
                 'fenced', 'timestamp'
             ]
             
-            # Filter existing columns and set order
-            df = df[[c for c in column_order if c in df.columns]]
+            final_df = df[[c for c in ordered_cols if c in df.columns]]
             
-            # Bilingual Header Map for Table
+            # Amharic Headers
             rename_map = {
                 'woreda': 'ወረዳ', 'cluster': 'ክላስተር', 'kebele': 'ቀበሌ', 'tno_name': 'TNO ስም',
                 'checker_fa_name': 'FA ስም', 'cbe_acc': 'CBE ACC', 'checker_phone': 'ስልክ',
                 'guava_beds': 'ዘይቶን አልጋ', 'guava_length': 'ዘይቶን ርዝመት', 'guava_sockets': 'ዘይቶን ሶኬት',
                 'gesho_beds': 'ጌሾ አልጋ', 'gesho_length': 'ጌሾ ርዝመት', 'gesho_sockets': 'ጌሾ ሶኬት',
                 'lemon_beds': 'ሎሚ አልጋ', 'lemon_length': 'ሎሚ ርዝመት', 'lemon_sockets': 'ሎሚ ሶኬት',
-                'grevillea_beds': 'ግራቪሊያ አልጋ', 'grevillea_length': 'ግራቪሊያ ርዝመት', 'grevillea_sockets': 'ግራቪሊያ ሶኬት',
-                'fenced': 'አጥር', 'timestamp': 'ጊዜ'
+                'grevillea_beds': 'ግራቪሊያ አልጋ', 'grevillea_length': 'ግራቪሊያ ርዝመት', 'grevillea_sockets': 'ግራቪሊያ ሶኬት'
             }
             
-            st.dataframe(df.rename(columns=rename_map), use_container_width=True)
-            
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Export CSV", data=csv, file_name="nursery_records.csv")
+            st.dataframe(final_df.rename(columns=rename_map), use_container_width=True)
+            st.download_button("📥 Export CSV", data=final_df.to_csv(index=False), file_name="nursery_data.csv")
         else:
             st.info("No records found.")
         db.close()
