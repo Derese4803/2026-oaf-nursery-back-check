@@ -3,7 +3,7 @@ import pandas as pd
 from database import SessionLocal, engine
 from models import BackCheck, Base
 
-# --- CONFIGURATION ---
+# --- INITIALIZATION ---
 st.set_page_config(page_title="OAF Nursery Back Check", layout="wide", page_icon="🌳")
 
 def init_db():
@@ -36,9 +36,9 @@ def main():
             st.subheader("📍 Location & Personnel")
             c1, c2, c3, c4 = st.columns(4)
             woreda = c1.text_input("Woreda")
-            cluster = c2.text_input("Cluster") # NEW
+            cluster = c2.text_input("Cluster")
             kebele = c3.text_input("Kebele")
-            tno_name = c4.text_input("TNO Name") # NEW
+            tno_name = c4.text_input("TNO Name")
 
             p1, p2, p3, p4 = st.columns(4)
             fa_name = p1.text_input("Name of Back checker (FAs)")
@@ -51,7 +51,7 @@ def main():
             # Helper function for bed sections
             def bed_section(species, expected):
                 st.markdown(f"### 🌿 {species}")
-                st.caption(f"Note: We expect **{expected}** sockets in the width.")
+                st.caption(f"Expectation: **{expected}** sockets in the width.")
                 bc1, bc2, bc3 = st.columns(3)
                 n = bc1.number_input(f"{species} beds number", min_value=0, step=1, key=f"n_{species}")
                 l = bc2.number_input(f"Length of {species} (m)", min_value=0.0, step=0.1, key=f"l_{species}")
@@ -64,7 +64,7 @@ def main():
             l_n, l_l, l_s = bed_section("Lemon", 13)
             gr_n, gr_l, gr_s = bed_section("Grevillea", 16)
 
-            # Calculations
+            # Calculations (Lemon excluded)
             t_guava = g_n * g_s
             t_gesho = ge_n * ge_s
             t_grevillea = gr_n * gr_s
@@ -81,7 +81,7 @@ def main():
                     st.error("Woreda, Kebele, and FAs Name are required!")
                 else:
                     new_record = BackCheck(
-                        woreda=woreda, kebele=kebele, cluster=cluster, tno_name=tno_name,
+                        woreda=woreda, cluster=cluster, kebele=kebele, tno_name=tno_name,
                         checker_fa_name=fa_name, checker_cbe_name=cbe_name,
                         checker_phone=phone, fenced=fenced,
                         guava_beds=g_n, guava_length=g_l, guava_sockets=g_s, total_guava_sockets=t_guava,
@@ -91,11 +91,11 @@ def main():
                     )
                     db.add(new_record)
                     db.commit()
-                    st.success(f"✅ Record for {kebele} saved!")
+                    st.success(f"✅ Data for {kebele} saved successfully!")
                     st.balloons()
         db.close()
 
-    # --- PAGE 2: DATA VIEW ---
+    # --- PAGE 2: DATA VIEW & DELETE ---
     elif page == "Data":
         st.title("📊 OAF Recorded Survey Data")
         db = SessionLocal()
@@ -104,7 +104,7 @@ def main():
         if records:
             df = pd.DataFrame([r.__dict__ for r in records])
             
-            # --- UPDATED COLUMN ORDERING ---
+            # --- STRICT COLUMN ORDERING ---
             cols = [
                 'id', 'woreda', 'cluster', 'kebele', 'tno_name', 
                 'checker_fa_name', 'checker_cbe_name', 'checker_phone',
@@ -123,14 +123,23 @@ def main():
 
             st.markdown("---")
             st.subheader("🗑️ Data Management")
-            id_to_del = st.number_input("Enter ID to Delete", min_value=1, step=1)
-            if st.button("❌ Delete Record", type="primary"):
-                target = db.query(BackCheck).filter(BackCheck.id == id_to_del).first()
-                if target:
-                    db.delete(target); db.commit(); st.rerun()
+            del_c1, del_c2 = st.columns([1, 2])
             
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download CSV", data=csv, file_name="OAF_Nursery_Data.csv")
+            with del_c1:
+                id_to_del = st.number_input("Enter ID to Delete", min_value=1, step=1)
+                if st.button("❌ Delete Selected ID", type="primary"):
+                    target = db.query(BackCheck).filter(BackCheck.id == id_to_del).first()
+                    if target:
+                        db.delete(target)
+                        db.commit()
+                        st.success(f"ID {id_to_del} removed.")
+                        st.rerun()
+                    else:
+                        st.error("ID not found.")
+            
+            with del_col2:
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button("📥 Export CSV", data=csv, file_name="OAF_Nursery_Data.csv")
         else:
             st.info("No records found.")
         db.close()
