@@ -83,7 +83,7 @@ def main():
                         lemon_beds=l_n, lemon_length=l_l, lemon_sockets=l_s, total_lemon_sockets=l_n*l_s,
                         grevillea_beds=gr_n, grevillea_length=gr_l, grevillea_sockets=gr_s, total_grevillea_sockets=gr_n*gr_s,
                         auto_remark=auto, general_remark=rem, photo=process_photo(up_img))
-                    db.add(new_rec); db.commit(); st.success("✅ Saved! / መረጃው ተመዝግቧል!")
+                    db.add(new_rec); db.commit(); st.success("✅ Saved! / መረጃው በተሳካ ሁኔታ ተመዝግቧል!")
                 except Exception as e: st.error(f"Error: {e}")
         db.close()
 
@@ -102,23 +102,43 @@ def main():
                     for r in recs:
                         if r.photo: zf.writestr(f"ID_{r.id}_{r.kebele}.jpg", base64.b64decode(r.photo))
                 
-                # --- STRICT EXCEL ORDERING ---
+                # --- STRICT EXCEL ORDERING (INCLUDING BED METERS) ---
                 df_raw = pd.DataFrame([r.__dict__ for r in recs])
-                col_order = ['id', 'woreda', 'cluster', 'kebele', 'tno_name', 'checker_fa_name', 'cbe_acc', 'checker_phone',
-                             'guava_beds', 'total_guava_sockets', 'gesho_beds', 'total_gesho_sockets', 
-                             'lemon_beds', 'total_lemon_sockets', 'grevillea_beds', 'total_grevillea_sockets',
-                             'fenced', 'auto_remark', 'general_remark', 'timestamp']
-                mapping = {'id': 'ID', 'woreda': 'Woreda / ወረዳ', 'cluster': 'Cluster / ክላስተር', 'kebele': 'Kebele / ቀበሌ',
-                           'tno_name': 'TNO Name', 'checker_fa_name': 'FA Name', 'cbe_acc': 'CBE Account', 'checker_phone': 'Phone Number',
-                           'guava_beds': 'Guava Beds', 'total_guava_sockets': 'Total Guava', 'gesho_beds': 'Gesho Beds', 'total_gesho_sockets': 'Total Gesho',
-                           'lemon_beds': 'Lemon Beds', 'total_lemon_sockets': 'Total Lemon', 'grevillea_beds': 'Grev Beds', 'total_grevillea_sockets': 'Total Grev',
-                           'fenced': 'Fenced?', 'auto_remark': 'System Status', 'general_remark': 'Remarks', 'timestamp': 'Date'}
+                
+                col_order = [
+                    'id', 'woreda', 'cluster', 'kebele', 'tno_name', 'checker_fa_name', 'cbe_acc', 'checker_phone',
+                    # Guava
+                    'guava_beds', 'guava_length', 'guava_sockets', 'total_guava_sockets', 
+                    # Gesho
+                    'gesho_beds', 'gesho_length', 'gesho_sockets', 'total_gesho_sockets', 
+                    # Lemon
+                    'lemon_beds', 'lemon_length', 'lemon_sockets', 'total_lemon_sockets',
+                    # Grevillea
+                    'grevillea_beds', 'grevillea_length', 'grevillea_sockets', 'total_grevillea_sockets',
+                    # Technical & Remarks
+                    'fenced', 'auto_remark', 'general_remark', 'timestamp'
+                ]
+
+                mapping = {
+                    'id': 'ID', 'woreda': 'Woreda / ወረዳ', 'cluster': 'Cluster / ክላስተር', 'kebele': 'Kebele / ቀበሌ',
+                    'tno_name': 'TNO Name', 'checker_fa_name': 'FA Name', 'cbe_acc': 'CBE Account', 'checker_phone': 'Phone Number',
+                    'guava_beds': 'Guava Beds', 'guava_length': 'Guava Bed Length (m)', 'guava_sockets': 'Guava Sockets Wide', 'total_guava_sockets': 'Total Guava Sockets',
+                    'gesho_beds': 'Gesho Beds', 'gesho_length': 'Gesho Bed Length (m)', 'gesho_sockets': 'Gesho Sockets Wide', 'total_gesho_sockets': 'Total Gesho Sockets',
+                    'lemon_beds': 'Lemon Beds', 'lemon_length': 'Lemon Bed Length (m)', 'lemon_sockets': 'Lemon Sockets Wide', 'total_lemon_sockets': 'Total Lemon Sockets',
+                    'grevillea_beds': 'Grev Beds', 'grevillea_length': 'Grev Bed Length (m)', 'grevillea_sockets': 'Grev Sockets Wide', 'total_grevillea_sockets': 'Total Grev Sockets',
+                    'fenced': 'Fenced?', 'auto_remark': 'System Status', 'general_remark': 'Remarks', 'timestamp': 'Date'
+                }
                 
                 df_final = df_raw[[c for c in col_order if c in df_raw.columns]].rename(columns=mapping)
+                
                 c1, c2 = st.columns(2)
                 c1.download_button("🖼️ Photo ZIP / ፎቶዎችን አውርድ", buf.getvalue(), "photos.zip", use_container_width=True)
-                c2.download_button("📥 Excel Data / መረጃውን አውርድ", df_final.to_csv(index=False).encode('utf-8-sig'), "data.csv", "text/csv", use_container_width=True)
+                
+                # utf-8-sig ensures Amharic is readable in Excel
+                csv_data = df_final.to_csv(index=False).encode('utf-8-sig')
+                c2.download_button("📥 Excel Data / መረጃውን አውርድ", csv_data, "nursery_report.csv", "text/csv", use_container_width=True)
 
+                st.markdown("---")
                 for r in recs:
                     with st.container(border=True):
                         col_t, col_i = st.columns([3, 1])
