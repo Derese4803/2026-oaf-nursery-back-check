@@ -7,37 +7,31 @@ from sqlalchemy import inspect, text
 from database import SessionLocal, engine
 from models import BackCheck, Base
 
-# --- INITIALIZATION & AUTO-FIX ---
+# --- INITIALIZATION & DATABASE SYNC ---
 st.set_page_config(page_title="OAF Nursery Back Check", layout="wide", page_icon="🌳")
 
 def init_db():
-    # 1. Create table if it doesn't exist
+    # Creates the new v2 database with all columns
     Base.metadata.create_all(bind=engine)
     
-    # 2. AUTO-FIX: Check if columns exist and add them if missing
+    # Extra safety: Ensure columns exist if the file was partially created
     inspector = inspect(engine)
     existing_columns = [col['name'] for col in inspector.get_columns('oaf_back_checks')]
     
-    required_columns = {
-        'cbe_acc': 'TEXT',
-        'auto_remark': 'TEXT',
-        'general_remark': 'TEXT',
-        'photo': 'TEXT'
-    }
+    required = {'cbe_acc': 'TEXT', 'auto_remark': 'TEXT', 'general_remark': 'TEXT', 'photo': 'TEXT'}
     
     with engine.connect() as conn:
-        for col_name, col_type in required_columns.items():
+        for col_name, col_type in required.items():
             if col_name not in existing_columns:
                 try:
                     conn.execute(text(f"ALTER TABLE oaf_back_checks ADD COLUMN {col_name} {col_type}"))
                     conn.commit()
-                    st.toast(f"Fixed: Added missing column {col_name}")
-                except Exception as e:
-                    pass # Column might have been added by another thread
+                except:
+                    pass
 
 init_db()
 
-# --- HELPERS ---
+# --- HELPER FUNCTIONS ---
 def process_photo(uploaded_file):
     if uploaded_file is not None:
         return base64.b64encode(uploaded_file.getvalue()).decode()
@@ -50,14 +44,15 @@ def nav(p):
     st.session_state["page"] = p
     st.rerun()
 
-# --- MAIN APP ---
 def main():
     page = st.session_state["page"]
     
+    # --- SIDEBAR ---
     st.sidebar.title("OAF Nursery 🌳")
     if st.sidebar.button("📝 Registration Form / መመዝገቢያ ፎርም", use_container_width=True): nav("Form")
     if st.sidebar.button("📊 View & Download / መረጃዎችን እና ፎቶዎችን", use_container_width=True): nav("Data")
 
+    # --- PAGE 1: FORM ---
     if page == "Form":
         st.title("🚜 Nursery Back Check Form / የችግኝ ጣቢያ ቁጥጥር")
         db = SessionLocal()
@@ -98,16 +93,14 @@ def main():
 
             st.markdown("---")
             st.subheader("📸 Photo & Remarks / ፎቶ እና ማስታወሻ")
-            up_photo = st.file_uploader("Upload Nursery Photo", type=['jpg', 'jpeg', 'png'])
+            up_photo = st.file_uploader("Upload Photo", type=['jpg', 'jpeg', 'png'])
             gen_remark = st.text_area("General Remarks / አጠቃላይ አስተያየት")
 
             if st.form_submit_button("Submit Data / መረጃውን መዝግብ"):
                 photo_str = process_photo(up_photo)
                 auto_rem = " | ".join(filter(None, [
-                    get_remark(g_s, 13, "Guava"),
-                    get_remark(ge_s, 16, "Gesho"),
-                    get_remark(l_s, 13, "Lemon"),
-                    get_remark(gr_s, 16, "Grevillea")
+                    get_remark(g_s, 13, "Guava"), get_remark(ge_s, 16, "Gesho"),
+                    get_remark(l_s, 13, "Lemon"), get_remark(gr_s, 16, "Grevillea")
                 ]))
 
                 try:
@@ -126,13 +119,14 @@ def main():
                     st.error(f"Error: {e}")
         db.close()
 
+    # --- PAGE 2: DATA VIEW ---
     elif page == "Data":
         st.title("📊 Records / መረጃዎች")
         db = SessionLocal()
         recs = db.query(BackCheck).all()
 
         if recs:
-            # ZIP Download Logic
+            # ZIP Download
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                 for r in recs:
@@ -145,14 +139,17 @@ def main():
                 with st.container(border=True):
                     t_col, i_col = st.columns([3, 1])
                     with t_col:
-                        st.write(f"**ID:** {r.id} | **Kebele:** {r.kebele}")
-                        st.write(f"**Status:** {r.auto_remark}")
-                        st.write(f"**Notes:** {r.general_remark}")
+                        st.write(f"**ID:** {r.id} | **Kebele:** {r.kebele} | **FA:** {r.checker_fa_name}")
+                        st.write(f"**System Remark:** {r.auto_remark}")
+                        st.write(f"**General Remark:** {r.general_remark}")
                     with i_col:
-                        if r.photo: st.image(base64.b64decode(r.photo), width=150)
+                        if r.photo:
+                            st.image(base64.b64decode(r.photo), width=150)
                     
                     if st.button(f"🗑️ Delete {r.id}", key=f"del_{r.id}"):
                         db.delete(r); db.commit(); st.rerun()
+        else:
+            st.info("No records found.")
         db.close()
 
 if __name__ == "__main__":
