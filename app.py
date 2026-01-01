@@ -120,7 +120,7 @@ def main():
                 ]
 
                 mapping = {
-                    'id': 'ID', 'woreda': 'Woreda / ወረዳ', 'cluster': 'Cluster / ክላስተር', 'kebele': 'Kebele / ቀበሌ',
+                    'id': 'ID', 'woreda': 'Woreda', 'cluster': 'Cluster', 'kebele': 'Kebele',
                     'tno_name': 'TNO Name', 'checker_fa_name': 'FA Name', 'cbe_acc': 'CBE Account', 'checker_phone': 'Phone Number',
                     'guava_beds': 'Guava Beds', 'guava_length': 'Guava Bed Length (m)', 'guava_sockets': 'Guava Sockets Wide', 'total_guava_sockets': 'Total Guava Sockets',
                     'gesho_beds': 'Gesho Beds', 'gesho_length': 'Gesho Bed Length (m)', 'gesho_sockets': 'Gesho Sockets Wide', 'total_gesho_sockets': 'Total Gesho Sockets',
